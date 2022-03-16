@@ -2,7 +2,7 @@
 
 ## Preparation
 - Assume you have the following software installed:
-    - oc
+    - kubectl (and oc if running on OpenShift)
     - operator-sdk
     - [kubectl-mvmcli](../../scripts/kubectl-mvmcli)
 
@@ -44,36 +44,36 @@ Please see [`statefulset.yml`](statefulset.yml) for example.
 
 ## Show Memory Machine Usage
 ```
-$ oc mvmcli usage
+$ kubectl mvmcli usage
 ```
 
 ## List Cluster Members Running on Memory Machine
 ```
-$ oc mvmcli list
+$ kubectl mvmcli list
 ```
 
 ## Add Data into Hazelcast Cluster
 ```
-$ oc -n demo exec --it hz-client -- bash
+$ kubectl -n demo exec --it hz-client -- bash
 $ python /home/client.py --help
 ```
 
 ## Snapshot Hazelcast Cluster (StatefulSet)
 ```
-$ oc mvmcli clustersnap create hz-snap-test --namespace demo --statefulset hz --profile hazelcast --profile-options '--nopause'
+$ kubectl mvmcli clustersnap create hz-snap-test --namespace demo --statefulset hz --profile hazelcast --profile-options '--nopause'
 ```
 
 ## List Snapshots Have Taken
 ```
-$ oc mvmcli clustersnap list
+$ kubectl mvmcli clustersnap list
 ```
 
 ## Restore Hazelcast Cluster (StatefulSet) From a Snapshot
 ```
-$ oc mvmcli clustersnap restore hz-snap-test
+$ kubectl mvmcli clustersnap restore hz-snap-test
 ```
 
 ## Delete Cluster Snapshots
 ```
-$ oc mvmcli clustersnap delete hz-snap-test
+$ kubectl mvmcli clustersnap delete hz-snap-test
 ```

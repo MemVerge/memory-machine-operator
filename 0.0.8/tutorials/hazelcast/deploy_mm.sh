@@ -31,21 +31,21 @@ else
 EOF
 fi
 
-oc create namespace memverge
+kubectl create namespace memverge
 
-oc -n memverge create secret generic memverge-github-dockerconfig --from-file=.dockerconfigjson=$docker_config --type=kubernetes.io/dockerconfigjson
+kubectl -n memverge create secret generic memverge-github-dockerconfig --from-file=.dockerconfigjson=$docker_config --type=kubernetes.io/dockerconfigjson
 
-oc -n memverge patch serviceaccount default -p '{"imagePullSecrets": [{"name": "memverge-github-dockerconfig"}]}'
+kubectl -n memverge patch serviceaccount default -p '{"imagePullSecrets": [{"name": "memverge-github-dockerconfig"}]}'
 
-oc -n memverge create secret generic memory-machine-license --from-file=license=mm-license.lic
+kubectl -n memverge create secret generic memory-machine-license --from-file=license=mm-license.lic
 
 operator-sdk run bundle ghcr.io/memverge/memory-machine-operator-bundle:0.0.8 --pull-secret-name memverge-github-dockerconfig -n memverge
 if [[ $docker_installed -ne 0 ]]; then
     rm $docker_config
 fi
 
-oc apply -f scc.yml
+kubectl apply -f scc.yml
 
-oc create namespace $NAMESPACE
+kubectl create namespace $NAMESPACE
 
-envsubst '$NAMESPACE' < memorymachine.yml | oc apply -f -
+envsubst '$NAMESPACE' < memorymachine.yml | kubectl apply -f -
