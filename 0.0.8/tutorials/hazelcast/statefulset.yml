@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hazelcast-configuration
+  namespace: ${NAMESPACE}
+data:
+  hazelcast.yaml: |-
+    hazelcast:
+      network:
+        join:
+          tcp-ip:
+            enabled: true
+            member-list:
+            - hazelcast-service:5701
+            - hz-0.hazelcast-service:5701
+            - hz-1.hazelcast-service:5701
+            - hz-2.hazelcast-service:5701
+        rest-api:
+          enabled: true
+          endpoint-groups:
+            HEALTH_CHECK:
+              enabled: true
+            CLUSTER_WRITE:
+              enabled: true
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hz
+  namespace: ${NAMESPACE}
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hazelcast
+      role: hazelcast
+  serviceName: hazelcast-service
+  template:
+    metadata:
+      labels:
+        app: hazelcast
+        role: hazelcast
+      annotations: 
+        memory-machine.memverge.com/inject-env: "yes"
+    spec:
+      containers:
+      - name: hazelcast-openshift
+        image: registry.connect.redhat.com/hazelcast/hazelcast-enterprise-4-rhel8:4.2.4
+        ports:
+        - name: hazelcast
+          containerPort: 5701
+        volumeMounts:
+        - name: hazelcast-storage
+          mountPath: /data/hazelcast
+        env:
+        - name: JAVA_OPTS
+          value: "-Dhazelcast.config=/data/hazelcast/hazelcast.yaml -Dhazelcast.local.localAddress=$(MM_POD_NAME).hazelcast-service"
+        - name: HZ_LICENSEKEY
+          valueFrom:
+            secretKeyRef:
+              name: hz-license-key-secret
+              key: key
+      volumes:
+      - name: hazelcast-storage
+        configMap:
+          name: hazelcast-configuration
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hazelcast-service
+  namespace: ${NAMESPACE}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: hazelcast
+    role: hazelcast
+  ports:
+  - protocol: TCP
+    port: 5701
+  publishNotReadyAddresses: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hazelcast-role-binding
+  namespace: ${NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: memverge-injection
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: ${NAMESPACE}

@@ -1,4 +1,4 @@
-# List of Configurations for MemoryMachine v0.0.1
+# List of Configurations for MemoryMachine
 Configurations for MemoryMachine can be specified in the spec field of the MemoryMachine YAML file. Below are details about current available configurations.
 
 **Note:** If a field is not specified in the YAML, and it has a default value, the default value will be used. Otherwise the field will be omitted.

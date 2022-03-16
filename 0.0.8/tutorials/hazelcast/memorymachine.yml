@@ -1,0 +1,16 @@
+apiVersion: mm.memverge.com/v1alpha1
+kind: MemoryMachine
+metadata:
+  name: memorymachine-${NAMESPACE}
+  namespace: ${NAMESPACE}
+spec:
+  mmVersion: "2.4.0"
+  controlVersion: "2.4.0"
+  enableSnapshot: true
+  pmemEmulation: true
+  mvcontainerConfig:
+    SnapshotReplicas: 1
+  mvcsnapdConfig:
+    LogTrace: true
+  mvsvcdConfig:
+    LogTrace: true

@@ -1,5 +1,5 @@
-# Tutorial: Deploy Your Application with Memory Machine Operator v0.0.1
-This guide assumes that you have installed the Memory Machine Operator v0.0.1, if not, please first install the operator through [OperatorHub](https://operatorhub.io/)
+# Tutorial: Deploy Your Application with Memory Machine Operator
+This guide assumes that you have installed the Memory Machine Operator.
 
 1. Create a namespace `test` where you would deploy the test application
 ```
@@ -33,24 +33,8 @@ metadata:
   name: memorymachine-sample
   namespace: test
 spec:
-  mmVersion: "master"
-  controlVersion: test
-  mvservicedConfig:
-    logTrace: false
-  useEtcd: false
-  m3cEnable: false
-  mmagentConfig:
-    rpcPort: 9527
-    log:
-      level: info
-    metric:
-      enabled: true
-  mmctlConfig:
-    httpsPort: 443
-    log:
-      level: info
-    metric:
-      enabled: true
+  mmVersion: "2.4.0"
+  controlVersion: "2.4.0"
 ```
 Explanation of parameters:
 - apiVersion: memverge.memverge.com/v1alpha1 : version of resource API is v1alpha1

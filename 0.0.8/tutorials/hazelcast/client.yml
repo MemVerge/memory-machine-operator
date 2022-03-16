@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hazelcast-client-script
+data:
+  client.py: |
+    # To install hazelcast python client, run:
+    # python3 -m pip install hazelcast-python-client
+
+    import sys
+    import argparse
+    import hazelcast
+    from hazelcast import aggregator, predicate
+
+    def insert(cluster_members, department, data_count, data_start):
+      client = hazelcast.HazelcastClient(
+        cluster_members=cluster_members
+      )
+      personnel_map = client.get_map("personnel-map")
+      print("Inserting", data_count, "employees to", department, "department")
+      for i in range(data_count):
+        name = str(data_start+i) + "th employee"
+        personnel_map.put(name, department)
+      print("Now there are", len(personnel_map.entry_set().result()), "employees")
+      client.shutdown()
+
+    def query(cluster_members, department):
+      client = hazelcast.HazelcastClient(
+        cluster_members=cluster_members
+      )
+      personnel_map = client.get_map("personnel-map")
+      print("There are", personnel_map.size().result(), "employees in total")
+      for department in personnel_map.aggregate(aggregator.distinct()).result():
+        employees = personnel_map.key_set(predicate.equal('this', department)).result()
+        print("There are", len(employees), "in", department, "department")
+      client.shutdown()
+
+
+    if __name__ == "__main__":
+      cluster_members = ["hazelcast-service.isp:5701"] # this example DNS is in-cluster only
+      department = 'IT'
+      data_count = 1000000
+      data_start = 0
+      parser = argparse.ArgumentParser()
+      subparsers = parser.add_subparsers(dest="subcommand", title='subcommands')
+      subparsers.required = True
+      parser_insert = subparsers.add_parser('insert', help='Insert data')
+      parser_query = subparsers.add_parser('query', help='Query data')
+      for subparser in [parser_insert, parser_query]:
+        subparser.add_argument(
+          '-m', '--member', dest='member', help='Cluster members', action='append'
+        )
+        subparser.add_argument(
+          '-d', '--department', dest='department', help='Department to insert/query data'
+        )
+      parser_insert.add_argument(
+        '-c', '--count', dest='count', help='Number of data to insert/query'
+      )
+      parser_insert.add_argument(
+        '-s', '--start', dest='start', help='Starting index of data to insert/query'
+      )
+
+      args = parser.parse_args(sys.argv[1:])
+      if args.subcommand == 'insert':
+        if args.member:
+          cluster_members = args.member
+        if args.department:
+          department = args.department
+        if args.count:
+          data_count = int(args.count)
+        if args.start:
+          data_start = int(args.start)
+        insert(cluster_members, department, data_count, data_start)
+      elif args.subcommand == 'query':
+        if args.member:
+          cluster_members = args.member
+        if args.department:
+          department = args.department
+        query(cluster_members, department)
+      else:
+        raise Exception(args.subcommand + 'is not a valid subcommand')
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hz-client
+spec:
+  containers:
+  - name: python
+    image: python:3
+    command:
+    - sh
+    - -c
+    - python3 -m pip install hazelcast-python-client && sleep infinity
+    volumeMounts:
+    - name: hazelcast-storage
+      mountPath: /home/client.py
+      subPath: client.py
+  volumes:
+  - name: hazelcast-storage
+    configMap:
+      name: hazelcast-client-script
+      defaultMode: 0500
