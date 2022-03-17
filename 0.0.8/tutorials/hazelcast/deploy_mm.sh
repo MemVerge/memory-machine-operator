@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-export NAMESPACE=demo
-
 docker_config="$HOME/.docker/config.json"
 which docker 2>&1 >/dev/null
 docker_installed=$?
@@ -45,7 +43,3 @@ if [[ $docker_installed -ne 0 ]]; then
 fi
 
 kubectl apply -f scc.yml
-
-kubectl create namespace $NAMESPACE
-
-envsubst '$NAMESPACE' < memorymachine.yml | kubectl apply -f -

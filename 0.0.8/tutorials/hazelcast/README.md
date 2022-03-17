@@ -14,14 +14,13 @@
 ```
 $ deploy_mm.sh
 ```
+NOTE: A SecurityContextConstraints with SELinuxContext strategy being RunAsAny is needed to allow injecting SELinux level to the application pods on OpenShift. An example is [`scc.yml`](scc.yml). Since SecurityContextConstraints is global, `scc.yml` needs to be applied only once.
+(For Kubernetes, there is no need to apply `scc.yml` since there is no SecurityContextConstraints on Kubernetes.)
 
 ## Deploy Hazelcast Cluster (StatefulSet)
 ```
 $ deploy_hazelcast.sh
 ```
-NOTE: A SecurityContextConstraints with SELinuxContext strategy being RunAsAny is needed to allow injecting SELinux level to the application pods on OpenShift. An example is [`scc.yml`](scc.yml). Since SecurityContextConstraints is global, `scc.yml` needs to be applied only once.
-(For Kubernetes, there is no need to apply `scc.yml` since there is no SecurityContextConstraints on Kubernetes.)
-
 NOTE: It is better to NOT use `:latest` tag for the application container image, because it is usually not stable. 
 If it changed before restoring a snapshot, the restored container starts with a different image, which may cause restore failure.
 Use a stable tag such as versioned tag instead.
