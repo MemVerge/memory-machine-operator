@@ -15,7 +15,7 @@ PMEM_CONFIG_SCRIPT=""
 
 function usage() {
     cat <<EOF
-Script to mount OpenShift/k8s nodes to PMEM device.
+Script to config PMEM devices on OpenShift/Kubernetes worker nodes.
 
 usage: ${0} [OPTIONS]
 
@@ -23,7 +23,7 @@ The following flags are optional.
 
        --mm-capacity  <num>   Total PMEM capacity of Memory Machine. Unit in Giga Byte. Default to 16.
        --pmem-emulation       Use DRAM to emulate PMEM device. Default value false.
-       --use-hugepage         Use hugepage DRAM instead of shared memory. Ignored if `pmem-emulation` is false. Default to false.
+       --use-hugepage         Use hugepage DRAM instead of shared memory. Ignored if "pmem-emulation" is false. Default to false.
        --mm-data-dir  <str>   Path of local directory to store Memory Machine data. Default to "/var/memverge".
 EOF
     exit 1
