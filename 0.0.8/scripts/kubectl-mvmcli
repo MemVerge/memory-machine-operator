@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# Copyright (C) 2021 MemVerge Inc.
+#
+# Wrapper script of 'mvcontainer' commands for kubectl plugin.
+#
+
+MM_DAEMONSET_NAME="memory-machine-daemon"
+
+function main() {
+  mm_pods=($(kubectl -n memverge get pod -l app=$MM_DAEMONSET_NAME -o jsonpath='{.items[*].metadata.name}'))
+  if [ ${#mm_pods[@]} -eq 0 ]; then
+    echo "No Memory Machine pod"
+    return 1
+  fi
+  idx=$[ $RANDOM % ${#mm_pods[@]} ]
+  kubectl -n memverge exec ${mm_pods[$idx]} -it -c memory-machine -- mvcontainer "$@"
+}
+
+main "$@"

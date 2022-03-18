@@ -1,0 +1,83 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: management-center-volume
+  namespace: ${NAMESPACE}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: management-center
+  namespace: ${NAMESPACE}
+  labels:
+    app: hazelcast
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hazelcast
+      role: mancenter
+  template:
+    metadata:
+      labels:
+        app: hazelcast
+        role: mancenter
+    spec:
+      containers:
+      - name: management-center
+        image: registry.connect.redhat.com/hazelcast/management-center-5-rhel8:5.0
+        resources:
+          limits:
+            memory: 1Gi
+        ports:
+        - name: mancenter
+          containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 15
+          successThreshold: 1
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 15
+          successThreshold: 1
+          failureThreshold: 10
+        volumeMounts:
+        - name: mancenter-storage
+          mountPath: /data
+        env:
+        - name: MC_INIT_CMD
+          value: "./bin/mc-conf.sh cluster add -H /data -cn dev -ma hazelcast-service"
+      volumes:
+      - name: mancenter-storage
+        persistentVolumeClaim:
+          claimName: management-center-volume
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: management-center-service
+  namespace: ${NAMESPACE}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: hazelcast
+    role: mancenter
+  ports:
+  - protocol: TCP
+    port: 8080

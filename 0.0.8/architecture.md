@@ -1,4 +1,4 @@
-# Memory Machine Container Architecture v0.0.1
+# Memory Machine Container Architecture
 To manage containers, Memory Machine runs in a single pod under `memverge` namespace on each container node and manages memory in a local PMEM persistent volume (PV).
 
 Memory Machine uses a supplied script, **config-pmem.sh**, to reconfigure the Persistent Memory namespace to `fsdax` mode. A daemonSet is used to create one Distributed Persistent Memory Engine (DPME) pod on each node. This pod runs **mvmallocd**, the Memory Machine memory manager.

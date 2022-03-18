@@ -1,0 +1,45 @@
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: memverge-injection
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+fsGroup:
+  type: MustRunAs
+groups:
+- system:authenticated
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+- KILL
+- MKNOD
+- SETUID
+- SETGID
+runAsUser:
+  type: MustRunAsRange
+seLinuxContext:
+  type: RunAsAny  # different from restricted scc
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: memverge-injection
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - memverge-injection
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
