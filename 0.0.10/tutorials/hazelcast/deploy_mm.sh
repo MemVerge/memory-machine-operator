@@ -31,13 +31,13 @@ fi
 
 kubectl create namespace memverge
 
-kubectl -n memverge create secret generic memverge-github-dockerconfig --from-file=.dockerconfigjson=$docker_config --type=kubernetes.io/dockerconfigjson
+kubectl -n memverge create secret generic memverge-dockerconfig --from-file=.dockerconfigjson=$docker_config --type=kubernetes.io/dockerconfigjson
 
-kubectl -n memverge patch serviceaccount default -p '{"imagePullSecrets": [{"name": "memverge-github-dockerconfig"}]}'
+kubectl -n memverge patch serviceaccount default -p '{"imagePullSecrets": [{"name": "memverge-dockerconfig"}]}'
 
 kubectl -n memverge create secret generic memory-machine-license --from-file=license=mm-license.lic
 
-operator-sdk run bundle ghcr.io/memverge/memory-machine-operator-bundle:0.0.8 --pull-secret-name memverge-github-dockerconfig -n memverge
+operator-sdk run bundle ghcr.io/memverge/memory-machine-operator-bundle:0.0.10 --pull-secret-name memverge-dockerconfig -n memverge
 if [[ $docker_installed -ne 0 ]]; then
     rm $docker_config
 fi

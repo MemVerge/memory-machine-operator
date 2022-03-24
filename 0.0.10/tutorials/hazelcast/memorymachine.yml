@@ -4,6 +4,7 @@ metadata:
   name: memorymachine-${NAMESPACE}
   namespace: ${NAMESPACE}
 spec:
+  imageRepository: ghcr.io/memverge
   mmVersion: "2.4.0"
   controlVersion: "2.4.0"
   enableSnapshot: true
