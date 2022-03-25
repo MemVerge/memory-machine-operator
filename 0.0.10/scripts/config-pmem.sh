@@ -225,6 +225,10 @@ spec:
           # Need bidirectional propagation, so that the mount happened inside the container actually
           # happens on th host as well.
           mountPropagation: Bidirectional
+        - name: shm
+          mountPath: /dev/shm
+        - name: hugepages
+          mountPath: /dev/hugepages
         - name: host
           mountPath: /host
         - name: pmem-config
@@ -245,6 +249,14 @@ spec:
       - name: mnt
         hostPath:
           path: /mnt
+          type: Directory
+      - name: shm
+        hostPath:
+          path: /dev/shm
+          type: Directory
+      - name: hugepages
+        hostPath:
+          path: /dev/hugepages
           type: Directory
       - name: host
         hostPath:
