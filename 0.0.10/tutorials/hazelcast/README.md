@@ -36,7 +36,9 @@ Follow instructions [here](../../README.md#configuring-pmem) to config Pmem.
 If you use your own private container registry, specify image repo and pull secret:
 ```
 $ config-pmem.sh --pmem-emulation --mm-capacity <pmem-size> \
-    --image-repo <your-private-container-registry>/<repo> \
+    --pmem-csi-image <your-private-container-registry>/<repo>/pmem-csi-driver:v1.0.2 \
+    --pause-image <your-private-container-registry>/<repo>/pause \
+    --namespace memverge \
     --pull-secret memverge-dockerconfig
 ```
 

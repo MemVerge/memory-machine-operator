@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2022 MemVerge Inc.
 #
-# Script to config PMEM devices on OpenShift/k8s nodes.
+# Script to config PMem devices on OpenShift/k8s nodes.
 #
 set -euo pipefail
 
@@ -10,29 +10,30 @@ MM_CAP=16
 PMEM_EMULATION=0
 USE_HUGEPAGE=0
 MM_DATA_DIR="/var/memverge"
-IMAGE_REPO=""
+PMEM_CSI_IMAGE="docker.io/intel/pmem-csi-driver:v1.0.2"
+PAUSE_IMAGE="k8s.gcr.io/pause"
 PULL_SECRET=""
 
-PMEM_CSI_IMAGE="intel/pmem-csi-driver:v1.0.2"
-PAUSE_IMAGE="k8s.gcr.io/pause"
-NAMESPACE="memverge"
+NAMESPACE="default"
 
 PMEM_CONFIG_SCRIPT=""
 
 function usage() {
     cat <<EOF
-Script to config PMEM devices on OpenShift/Kubernetes worker nodes.
+Script to config PMem devices on OpenShift/Kubernetes worker nodes.
 
 usage: ${0} [OPTIONS]
 
 The following flags are optional.
 
-       --mm-capacity  <num>   Total PMEM capacity of Memory Machine. Unit in Giga Byte. Default to 16.
-       --pmem-emulation       Use DRAM to emulate PMEM device. Default value false.
-       --use-hugepage         Use hugepage DRAM instead of shared memory. Ignored if "pmem-emulation" is false. Default to false.
-       --mm-data-dir  <str>   Path of local directory to store Memory Machine data. Default to "/var/memverge".
-       --image-repo   <str>   Address of container registry repo to pull images.
-       --pull-secret  <str>   Secret to pull container images from the specified repo.
+       --mm-capacity     <num>   Total PMem capacity of Memory Machine. Unit in Giga Byte (default: 16).
+       --pmem-emulation          Use DRAM to emulate PMem device (default: false).
+       --use-hugepage            Use hugepage DRAM instead of shared memory (default: false).
+       --mm-data-dir     <str>   Path of local directory to store Memory Machine data (default: "/var/memverge").
+       --pmem-csi-image  <str>   Address of pmem-csi-driver image (default: "docker.io/intel/pmem-csi-driver:v1.0.2"). 
+       --pause-image     <str>   Address of pause image (default: "k8s.gcr.io/pause"). 
+       --namespace       <str>   Namespace to deploy the DaemonSet to config PMem devices (default: "default").
+       --pull-secret     <str>   Secret to pull container images (default: "").
 EOF
     exit 1
 }
@@ -54,8 +55,16 @@ function main() {
         MM_DATA_DIR="$2"
         shift
         ;;
-      --image-repo)
-        IMAGE_REPO="$2"
+      --pmem-csi-image)
+        PMEM_CSI_IMAGE="$2"
+        shift
+        ;;
+      --pause-image)
+        PAUSE_IMAGE="$2"
+        shift
+        ;;
+      --namespace)
+        NAMESPACE="$2"
         shift
         ;;
       --pull-secret)
@@ -90,7 +99,7 @@ rm -rf ${SRC_PATH}/mm
 fallocate -l ${MM_CAP}G ${SRC_PATH}/mm
 "
   else
-    if ! confirm "This operation will erase all data on ALL PMEM devices, please confirm"; then
+    if ! confirm "This operation will erase all data on ALL PMem devices, please confirm"; then
       exit 0    
     fi
 
@@ -106,7 +115,7 @@ for pmem in \${pmems[*]}; do
   rm -rf /mnt/\${pmem}
 done
 
-# reconfigure ALL PMEM namespaces to fsdax
+# reconfigure ALL PMem namespaces to fsdax
 namespaces=(\$(ndctl list | grep namespace | awk -F : '{print \$2}' | sed 's/\"//g; s/,//g'))
 for ns in \${namespaces[*]}; do
   ndctl create-namespace -f -e \${ns} --mode fsdax
@@ -126,11 +135,6 @@ for pmem in \${pmems[*]}; do
   echo \"Successfully mounted \${pmem} and allocated /mnt/\${pmem}/mm\" 
 done
 "
-  fi
-
-  if [ ! -z "$IMAGE_REPO" ]; then
-    PMEM_CSI_IMAGE="$IMAGE_REPO/pmem-csi-driver:v1.0.2"
-    PAUSE_IMAGE="$IMAGE_REPO/pause"
   fi
 
   config_pmem
@@ -288,7 +292,7 @@ function wait_for_pods() {
   sleep 5 # wait a bit for pods showing up
   PODS=$(kubectl -n ${NAMESPACE} get pods | grep ${daemonset_name} | awk '{print $1}')
 
-  # Because the PMEM config actually happens in the init container of each pod, once the pod becomes
+  # Because the PMem config actually happens in the init container of each pod, once the pod becomes
   # running, it means that the init container has finished without error, and the PMEMs have been
   # configured successfully on this node.
   for POD in ${PODS}; do
