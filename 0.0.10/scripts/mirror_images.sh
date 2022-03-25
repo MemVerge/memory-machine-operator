@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 #
-# Copyright (C) 2021 MemVerge Inc.
+# Copyright (C) 2022 MemVerge Inc.
 #
 # Script to mirror images required by Memory Machine to your own private container registry.
 #
 set -euo pipefail
 
 PRIVATE_IMG_REPO=""
+
+DOCKER_CONFIG="$HOME/.docker/config.json"
 
 function usage() {
     cat <<EOF
@@ -31,12 +33,17 @@ function main() {
             shift
     done
 
-    if [ -z "$PRIVATE_IMG_REPO" ]; then
-        echo "--image-repo is required"
+    if [[ -z $PRIVATE_IMG_REPO ]]; then
+        echo "--image-repo is required!"
         exit 1
     fi
 
-    mirror_operator_and_build_bundle "ghcr.io/xiongzubiao/memory-machine-operator:0.0.10"
+    login_registry "ghcr.io"
+
+    private_registry=$(echo $PRIVATE_IMG_REPO | awk -F"/" '{print $1}')
+    login_registry $private_registry
+
+    mirror_operator_and_build_bundle "ghcr.io/memverge/memory-machine-operator:0.0.10"
 
     mirror_image "ghcr.io/memverge/memory-machine:2.4.0"
     mirror_image "ghcr.io/memverge/mmagent:2.4.0"
@@ -44,7 +51,35 @@ function main() {
     mirror_image "k8s.gcr.io/etcd:3.4.13-0"
     mirror_image "docker.io/intel/pmem-csi-driver:v1.0.2"
     mirror_image "k8s.gcr.io/pause"
+    mirror_image "quay.io/operator-framework/opm"
 
+}
+
+function login_registry() {
+    image_registry=$1
+    echo "login $image_registry"
+    docker_version=$(docker -v 2>/dev/null)
+    if [[ $docker_version == *"docker"* ]]; then
+        docker login $image_registry
+    elif [[ $docker_version == *"podman"* ]]; then
+        docker login $image_registry --authfile $DOCKER_CONFIG
+    else
+        mkdir -p $(dirname $DOCKER_CONFIG)
+        echo -n "username: "
+        read registry_username
+        echo -n "password or token: "
+        read -s registry_password
+        registry_auth=$(echo -n "$registry_username:$registry_password" | base64)
+        cat >$DOCKER_CONFIG <<EOF
+{
+        "auths": {
+                "${image_registry}": {
+                        "auth": "$registry_auth"
+                }
+        }
+}
+EOF
+    fi
 }
 
 function mirror_image() {

@@ -111,8 +111,6 @@ Create an image-pull secret named `memverge-dockerconfig` and retrieve the Opera
        --pull-secret-name memverge-dockerconfig
    ```
 
-NOTE: If you would like to host all images in your own private container registry, please follow instructions [here](bundle_build/README.md) to install Memory Machine Operator.
-
 ## Deployment Examples
 
 The following examples are available:

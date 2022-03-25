@@ -7,20 +7,45 @@
     - [kubectl-mvmcli](../../scripts/kubectl-mvmcli)
 
 - Follow instructions [here](../../README.md) to
-    - config PMEM devices on worker nodes to use **Memory Machine™**
-    - label the worker node for **Memory Machine™** license server
+    - label the worker node for Memory Machine license server
+    - label each worker node that you want to use with Memory Machine
+
+## Mirror Images If Using Your Own Private Container Registry
+- If you would like to host all images in your own private container registry, script [`mirror_images.sh`](../../scripts/mirror_images.sh) can help.
+```
+$ mirror_images.sh --image-repo <your-private-container-registry>/<repo>
+```
 
 ## Deploy Memory Machine
 ```
-$ deploy_mm.sh
+$ install-operator.sh --bundle-image ghcr.io/memverge/memory-machine-operator-bundle:0.0.10 \
+    --mm-license <path-to-your-license-file>
 ```
+If you use your own private container registry, specify both bundle images and index images from your registry:
+```
+$ install-operator.sh --bundle-image <your-private-container-registry>/<repo>/memory-machine-operator-bundle:0.0.10 \
+    --index-image <your-private-container-registry>/<repo>/opm:latest
+    --mm-license <path-to-your-license-file>
+```
+
 NOTE: A SecurityContextConstraints with SELinuxContext strategy being RunAsAny is needed to allow injecting SELinux level to the application pods on OpenShift. An example is [`scc.yml`](scc.yml). Since SecurityContextConstraints is global, `scc.yml` needs to be applied only once.
 (For Kubernetes, there is no need to apply `scc.yml` since there is no SecurityContextConstraints on Kubernetes.)
+
+## Config Pmem
+Follow instructions [here](../../README.md#configuring-pmem) to config Pmem.
+If you use your own private container registry, specify image repo and pull secret:
+```
+$ config-pmem.sh --pmem-emulation --mm-capacity <pmem-size> \
+    --image-repo <your-private-container-registry>/<repo> \
+    --pull-secret memverge-dockerconfig
+```
 
 ## Deploy Hazelcast Cluster (StatefulSet)
 ```
 $ deploy_hazelcast.sh
 ```
+If you use your own private container registry, change spec `imageRepository` and `etcdConfig:Image` in [`memorymachine.yml`](memorymachine.yml).
+
 NOTE: It is better to NOT use `:latest` tag for the application container image, because it is usually not stable. 
 If it changed before restoring a snapshot, the restored container starts with a different image, which may cause restore failure.
 Use a stable tag such as versioned tag instead.
