@@ -78,7 +78,7 @@ Configure the PMem as described in the following steps:
 
 ## Installing the Memory Machine Operator
 
-Create an image-pull secret named `memverge-github-dockerconfig` and retrieve the Operator image by following these steps:
+Create an image-pull secret named `memverge-dockerconfig` and retrieve the Operator image by following these steps:
 
 1. Log into Docker as follows:
 
@@ -89,7 +89,7 @@ Create an image-pull secret named `memverge-github-dockerconfig` and retrieve th
 2. Create the secret as follows:
 
    ```
-   $ kubectl create secret generic memverge-github-dockerconfig \
+   $ kubectl create secret generic memverge-dockerconfig \
        -n memverge \
        --from-file=.dockerconfigjson=$HOME/.docker/config.json \
        --type=kubernetes.io/dockerconfigjson
@@ -100,15 +100,15 @@ Create an image-pull secret named `memverge-github-dockerconfig` and retrieve th
    ```
    $ kubectl patch serviceaccount default \
        -n memverge \
-       -p '{"imagePullSecrets": [{"name": "memverge-github-dockerconfig"}]}'
+       -p '{"imagePullSecrets": [{"name": "memverge-dockerconfig"}]}'
    ```
 
 4. Install the Memory Machine Operator node by typing the `operator-sdk` command as follows:
 
    ```
-   $ operator-sdk run bundle ghcr.io/memverge/memory-machine-operator-bundle:0.0.8 \
+   $ operator-sdk run bundle ghcr.io/memverge/memory-machine-operator-bundle:0.0.10 \
        -n memverge \
-       --pull-secret-name memverge-github-dockerconfig
+       --pull-secret-name memverge-dockerconfig
    ```
 
 ## Deployment Examples

@@ -8,7 +8,7 @@ $ kubectl create ns test
 
 2. Create an image pulling secret in your application namespace as well.
 ```
-$ kubectl create secret generic memverge-github-dockerconfig \
+$ kubectl create secret generic memverge-dockerconfig \
     -n test \
     --from-file=.dockerconfigjson=$HOME/.docker/config.json \
     --type=kubernetes.io/dockerconfigjson

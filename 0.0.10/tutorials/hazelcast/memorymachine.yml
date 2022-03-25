@@ -4,6 +4,7 @@ metadata:
   name: memorymachine-${NAMESPACE}
   namespace: ${NAMESPACE}
 spec:
+  imageRepository: ghcr.io/memverge
   mmVersion: "2.4.0"
   controlVersion: "2.4.0"
   enableSnapshot: true
@@ -14,3 +15,5 @@ spec:
     LogTrace: true
   mvsvcdConfig:
     LogTrace: true
+  etcdConfig:
+    Image: k8s.gcr.io/etcd:3.4.13-0

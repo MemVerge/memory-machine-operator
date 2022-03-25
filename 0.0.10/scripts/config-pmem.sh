@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# Copyright (C) 2021 MemVerge Inc.
+# Copyright (C) 2022 MemVerge Inc.
 #
-# Script to config PMEM devices on OpenShift/k8s nodes.
+# Script to config PMem devices on OpenShift/k8s nodes.
 #
 set -euo pipefail
 
@@ -10,21 +10,30 @@ MM_CAP=16
 PMEM_EMULATION=0
 USE_HUGEPAGE=0
 MM_DATA_DIR="/var/memverge"
+PMEM_CSI_IMAGE="docker.io/intel/pmem-csi-driver:v1.0.2"
+PAUSE_IMAGE="k8s.gcr.io/pause"
+PULL_SECRET=""
+
+NAMESPACE="default"
 
 PMEM_CONFIG_SCRIPT=""
 
 function usage() {
     cat <<EOF
-Script to config PMEM devices on OpenShift/Kubernetes worker nodes.
+Script to config PMem devices on OpenShift/Kubernetes worker nodes.
 
 usage: ${0} [OPTIONS]
 
 The following flags are optional.
 
-       --mm-capacity  <num>   Total PMEM capacity of Memory Machine. Unit in Giga Byte. Default to 16.
-       --pmem-emulation       Use DRAM to emulate PMEM device. Default value false.
-       --use-hugepage         Use hugepage DRAM instead of shared memory. Ignored if "pmem-emulation" is false. Default to false.
-       --mm-data-dir  <str>   Path of local directory to store Memory Machine data. Default to "/var/memverge".
+       --mm-capacity     <num>   Total PMem capacity of Memory Machine. Unit in Giga Byte (default: 16).
+       --pmem-emulation          Use DRAM to emulate PMem device (default: false).
+       --use-hugepage            Use hugepage DRAM instead of shared memory (default: false).
+       --mm-data-dir     <str>   Path of local directory to store Memory Machine data (default: "/var/memverge").
+       --pmem-csi-image  <str>   Address of pmem-csi-driver image (default: "docker.io/intel/pmem-csi-driver:v1.0.2"). 
+       --pause-image     <str>   Address of pause image (default: "k8s.gcr.io/pause"). 
+       --namespace       <str>   Namespace to deploy the DaemonSet to config PMem devices (default: "default").
+       --pull-secret     <str>   Secret to pull container images (default: "").
 EOF
     exit 1
 }
@@ -44,6 +53,22 @@ function main() {
         ;;
       --mm-data-dir)
         MM_DATA_DIR="$2"
+        shift
+        ;;
+      --pmem-csi-image)
+        PMEM_CSI_IMAGE="$2"
+        shift
+        ;;
+      --pause-image)
+        PAUSE_IMAGE="$2"
+        shift
+        ;;
+      --namespace)
+        NAMESPACE="$2"
+        shift
+        ;;
+      --pull-secret)
+        PULL_SECRET="$2"
         shift
         ;;
       *)
@@ -74,7 +99,7 @@ rm -rf ${SRC_PATH}/mm
 fallocate -l ${MM_CAP}G ${SRC_PATH}/mm
 "
   else
-    if ! confirm "This operation will erase all data on ALL PMEM devices, please confirm"; then
+    if ! confirm "This operation will erase all data on ALL PMem devices, please confirm"; then
       exit 0    
     fi
 
@@ -90,7 +115,7 @@ for pmem in \${pmems[*]}; do
   rm -rf /mnt/\${pmem}
 done
 
-# reconfigure ALL PMEM namespaces to fsdax
+# reconfigure ALL PMem namespaces to fsdax
 namespaces=(\$(ndctl list | grep namespace | awk -F : '{print \$2}' | sed 's/\"//g; s/,//g'))
 for ns in \${namespaces[*]}; do
   ndctl create-namespace -f -e \${ns} --mode fsdax
@@ -129,17 +154,20 @@ function confirm() {
   esac
 }
 
-PMEM_CONFIG_YAML=$(cat << EOF
+function config_pmem() {
+  PMEM_CONFIG_YAML="
 # Use a ServiceAccount to bind privileged SCC, to allow privileged container.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: memverge-pmem-config
+  namespace: ${NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: memverge-pmem-config-role-binding
+  namespace: ${NAMESPACE}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -152,6 +180,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: memverge-pmem-config
+  namespace: ${NAMESPACE}
 data:
   pmem-config.sh: |-
     {{PMEM_CONFIG_SCRIPT}}
@@ -160,6 +189,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: memverge-pmem-config
+  namespace: ${NAMESPACE}
   labels:
     app: pmem-config-daemon
 spec:
@@ -174,11 +204,13 @@ spec:
       nodeSelector:
         storage: pmem
       serviceAccountName: memverge-pmem-config
+      imagePullSecrets:
+      - name: ${PULL_SECRET}
       hostPID: true
       initContainers:
       - name: pmem-config
         # Use intel's pmem-csi-driver image for convenience, because it has ndctl installed.
-        image: intel/pmem-csi-driver:v1.0.2
+        image: ${PMEM_CSI_IMAGE}
         command: [/home/pmem-config.sh]
         securityContext:
           privileged: true
@@ -200,7 +232,7 @@ spec:
           subPath: pmem-config.sh
       containers:
       - name: pause
-        image: k8s.gcr.io/pause
+        image: ${PAUSE_IMAGE}
       volumes:
       - name: dev
         hostPath:
@@ -223,10 +255,8 @@ spec:
           name: memverge-pmem-config
           # Make pmem-config.sh script executable
           defaultMode: 0500
-EOF
-)
+"
 
-function config_pmem() {
   # Add the content of the pmem config script to the yaml file's ConfigMap
   readarray -t <<<"${PMEM_CONFIG_SCRIPT}"
   PMEM_CONFIG_SCRIPT="    ${MAPFILE[0]}"
@@ -239,9 +269,9 @@ function config_pmem() {
   # Delete existing resources (maybe leftover from a previous failed run)
   set +e
   echo "${PMEM_CONFIG_YAML}" | kubectl delete -f - 2>/dev/null
-  PODS=$(kubectl get pods 2>/dev/null | grep memverge-pmem-config | awk '{print $1}')
+  PODS=$(kubectl -n ${NAMESPACE} get pods 2>/dev/null | grep memverge-pmem-config | awk '{print $1}')
   for POD in ${PODS}; do
-    kubectl delete pod ${POD} --now=true --wait=true --timeout=30s 2>/dev/null
+    kubectl -n ${NAMESPACE} delete pod ${POD} --now=true --wait=true --timeout=30s 2>/dev/null
   done
   set -e
 
@@ -260,13 +290,13 @@ function wait_for_pods() {
   local deadline=$(($now+$timeout))
 
   sleep 5 # wait a bit for pods showing up
-  PODS=$(kubectl get pods | grep ${daemonset_name} | awk '{print $1}')
+  PODS=$(kubectl -n ${NAMESPACE} get pods | grep ${daemonset_name} | awk '{print $1}')
 
-  # Because the PMEM config actually happens in the init container of each pod, once the pod becomes
+  # Because the PMem config actually happens in the init container of each pod, once the pod becomes
   # running, it means that the init container has finished without error, and the PMEMs have been
   # configured successfully on this node.
   for POD in ${PODS}; do
-    while [[ $(kubectl get pod ${POD} -o go-template --template "{{.status.phase}}") != "Running" ]]; do
+    while [[ $(kubectl -n ${NAMESPACE} get pod ${POD} -o go-template --template "{{.status.phase}}") != "Running" ]]; do
       if [ "$(date +%s)" -gt "${deadline}" ]; then
         echo
         echo "Timeout waiting for ${daemonset_name} daemonset to start."
