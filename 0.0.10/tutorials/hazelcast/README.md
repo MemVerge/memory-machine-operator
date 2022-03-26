@@ -46,7 +46,7 @@ $ config-pmem.sh --pmem-emulation --mm-capacity <pmem-size> \
 ```
 $ deploy_hazelcast.sh
 ```
-If you use your own private container registry, change spec `imageRepository` and `etcdConfig:Image` in [`memorymachine.yml`](memorymachine.yml).
+If you use your own private container registry, change spec `imageRepository` and `etcdConfig:image` in [`memorymachine.yml`](memorymachine.yml).
 
 NOTE: It is better to NOT use `:latest` tag for the application container image, because it is usually not stable. 
 If it changed before restoring a snapshot, the restored container starts with a different image, which may cause restore failure.

@@ -75,8 +75,10 @@ function main() {
 function login_registry() {
     image_registry=$1
     echo "login $image_registry"
+    set +e
     docker_version=$(docker -v 2>/dev/null)
-    if [[ $docker_version == *"docker"* ]]; then
+    set -e
+    if [[ $docker_version == *"Docker"* ]]; then
         docker login $image_registry
     elif [[ $docker_version == *"podman"* ]]; then
         docker login $image_registry --authfile $DOCKER_CONFIG
@@ -86,16 +88,18 @@ function login_registry() {
         read registry_username
         echo -n "password or token: "
         read -s registry_password
+        echo ""
         registry_auth=$(echo -n "$registry_username:$registry_password" | base64)
+        if [[ ! -f $DOCKER_CONFIG ]]; then
         cat >$DOCKER_CONFIG <<EOF
 {
         "auths": {
-                "${image_registry}": {
-                        "auth": "$registry_auth"
-                }
         }
 }
 EOF
+        fi
+        jq "if .\"auths\".\"$image_registry\"? then .\"auths\".\"$image_registry\".\"auth\"=\"$registry_auth\" else .\"auths\" += { \"$image_registry\": { \"auth\": \"$registry_auth\" } } end" \
+            "$DOCKER_CONFIG" > "$DOCKER_CONFIG.tmp" && mv "$DOCKER_CONFIG.tmp" "$DOCKER_CONFIG"
     fi
 }
 

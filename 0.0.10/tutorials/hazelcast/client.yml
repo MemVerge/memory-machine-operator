@@ -37,7 +37,7 @@ data:
 
 
     if __name__ == "__main__":
-      cluster_members = ["hazelcast-service.isp:5701"] # this example DNS is in-cluster only
+      cluster_members = ["hazelcast-service:5701"] # this example DNS is in-cluster only
       department = 'IT'
       data_count = 1000000
       data_start = 0
