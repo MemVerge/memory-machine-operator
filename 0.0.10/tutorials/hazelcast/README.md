@@ -28,7 +28,7 @@ $ install-operator.sh --bundle-image <your-private-container-registry>/<repo>/me
     --mm-license <path-to-your-license-file>
 ```
 
-NOTE: A SecurityContextConstraints with SELinuxContext strategy being RunAsAny is needed to allow injecting SELinux level to the application pods on OpenShift. An example is [`scc.yml`](scc.yml). Since SecurityContextConstraints is global, `scc.yml` needs to be applied only once.
+NOTE: A SecurityContextConstraints with SELinuxContext strategy being RunAsAny is needed to allow injecting SELinux level to the application pods on OpenShift. An example is [`scc.yml`](../../scripts/scc.yml). Since SecurityContextConstraints is global, `scc.yml` needs to be applied only once.
 (For Kubernetes, there is no need to apply `scc.yml` since there is no SecurityContextConstraints on Kubernetes.)
 
 ## Config Pmem
