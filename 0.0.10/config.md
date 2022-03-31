@@ -125,3 +125,10 @@ Configurations for MemoryMachine can be specified in the spec field of the Memor
     - Default value: "/tmp/libmvm_sock"
   - Daemonize `bool`
   - LogTrace `bool`
+
+## etcdConfig
+
+- Configuration for etcd
+- Configurable parameters:
+  - storageClass `string`
+  - image `string`	

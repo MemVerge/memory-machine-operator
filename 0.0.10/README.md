@@ -12,6 +12,8 @@ You must have a Kubernetes cluster deployed, and the `kubectl` command-line tool
 
 The [Operator SDK](https://sdk.operatorframework.io/docs/installation/) is a framework used to develop and run Operators. You will use the `operator-sdk` command to run the Memory Machine Operator, so you must have the Operator SDK installed.
 
+Please be sure to have a StorageClass that supports dynamic provisioning. You can change the StorageClass in ```etcdConfig```. Please see [MemoryMachine Configuration List](config.md)
+
 ## Configuring the Memory Machine Platform
 
 Before installing Memory Machine Operator, complete the steps described below.

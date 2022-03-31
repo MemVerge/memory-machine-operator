@@ -35,6 +35,8 @@ metadata:
 spec:
   mmVersion: "2.4.0"
   controlVersion: "2.4.0"
+  etcdConfig:
+    storageClass: <storage class>
 ```
 Explanation of parameters:
 - apiVersion: memverge.memverge.com/v1alpha1 : version of resource API is v1alpha1
