@@ -53,18 +53,56 @@ If it changed before restoring a snapshot, the restored container starts with a 
 Use a stable tag such as versioned tag instead.
 
 NOTE: To make the Hazelcast cluster working properly after snapshot/restore, the following configurations are required:
-- Hazelast's REST API access should be enabled. The REST endpoint groups `HEALTH_CHECK` and `CLUSTER_WRITE` should be enabled.
-We need them to query and change the state of the Hazelcast cluster before/after snapshot/restore.
 - A `ClusterIP` Service is needed to provide in-cluster DNS names for Hazelcast pods.
 Since the pod IP addresses may change after restore, the Hazelcast members might be unable to join together after restore.
 We use the service-provided DNS to solve the ip change issue.
 - If the Readiness probe is used in the application container, the `ClusterIP` Service should have `publishNotReadyAddresses` enabled,
 to allow the pod DNS accessible before the Readiness probe reporting the container ready.
-- Hazelcast's `tcp-ip` discovery mechanism should be used, with the service-provided DNS name of each member listed.
-In this way, the Hazelcast members can still recognize each other after restore.
 - Each Hazelcast member should have its local address set as its service-provided DNS name. 
 It can be configured via `hazelcast.local.localAddress` in the environment variable `JAVA_OPTS`.
-In this way, the name of each Hazelcast member can keep unchanged after restore. (By default, the IP address is used, which may change after restore.)
+In this way, the name of each Hazelcast member can keep unchanged. (By default, the IP address is used, which may change after restore.) And the members can recognize each other and join back together after restore.
+
+- Hazelcast's discovery mechanism:
+    - For Hazelcast version below 5.1, `tcp-ip` discovery mechanism should be used, with the service-provided DNS name of at least one member listed.
+        ```
+        hazelcast:
+          network:
+            join:
+              tcp-ip:
+                enabled: true
+                member-list:
+                - <service-name>:5701
+                - <pod #0>.<service-name>:5701
+        ```
+    - For Hazelcast version starting from 5.1, `kubernetes` discovery mechanism can be used.
+    (The `hazelcast-kubernetes` plugin is not compatible with the `hazelcast.local.localAddress` setting for Hazlecast version below 5.1.)
+    This discovery mechanism has two modes:
+        - `Kubernetes API` mode
+            - It requires setting up RoleBinding to allow access to Kubernetes API. One can find example [here](https://raw.githubusercontent.com/hazelcast/hazelcast-kubernetes/master/rbac.yaml). 
+            - It requires using a Kubernetes API token which is still valid while the Hazelcast pods are restored.
+            (By default, the `hazelcast-kubernetes` plugin uses the token projected into every pod, which will expire after the pod is deleted. Snapshot restore will delete the old pod and recreate a new pod. If the token remembered in the memory is from the old pod, it won't work in the new pod.)
+
+            ```
+            hazelcast:
+              network:
+                join:
+                  kubernetes:
+                    enabled: true
+                    service-name: <service-name>
+                    namespace: <namespace>
+                    api-token: <kubernetes api token>
+            ```
+            If you don't want the token exposed as plain text in the settings, you can add it as a Secret, and then mount the Secret to environment variable `HAZELCAST_KUBERNETES_API_TOKEN` in the pod spec.
+        - `DNS Lookup` mode
+            - It requires a headless ClusterIP service, and only one Hazelcast cluster per service.
+            ```
+            hazelcast:
+              network:
+                join:
+                  kubernetes:
+                    enabled: true
+                    service-dns: <headless-service-name>.<namespace>.svc.cluster.local
+            ```
 
 Please see [`statefulset.yml`](statefulset.yml) for example.
 
@@ -88,6 +126,10 @@ $ python /home/client.py --help
 ```
 $ kubectl mvmcli clustersnap create hz-snap-test --namespace demo --statefulset hz --profile hazelcast --profile-options '--nopause'
 ```
+NOTE: 
+- By default, we temporarily change the state of the Hazelcast cluster to `PASSIVE` during creating a snapshot, and restore the state back after the snapshot creation is done. To make it work, Hazelast's REST API access should be enabled. The REST endpoint groups `HEALTH_CHECK` and `CLUSTER_WRITE` should be enabled.
+- However, if `--nopause` option is specified, the cluster state won't be changed. In this case, the REST API access is not required.
+
 
 ## List Snapshots Have Taken
 ```

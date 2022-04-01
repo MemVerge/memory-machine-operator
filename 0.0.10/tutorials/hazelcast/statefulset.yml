@@ -8,13 +8,10 @@ data:
     hazelcast:
       network:
         join:
-          tcp-ip:
+          multicast:
+            enabled: false
+          kubernetes:
             enabled: true
-            member-list:
-            - hazelcast-service:5701
-            - hz-0.hazelcast-service:5701
-            - hz-1.hazelcast-service:5701
-            - hz-2.hazelcast-service:5701
         rest-api:
           enabled: true
           endpoint-groups:
@@ -45,7 +42,7 @@ spec:
     spec:
       containers:
       - name: hazelcast-openshift
-        image: registry.connect.redhat.com/hazelcast/hazelcast-enterprise-4-rhel8:4.2.4
+        image: registry.connect.redhat.com/hazelcast/hazelcast-enterprise-5-rhel8:5.1
         ports:
         - name: hazelcast
           containerPort: 5701
@@ -53,6 +50,18 @@ spec:
         - name: hazelcast-storage
           mountPath: /data/hazelcast
         env:
+        - name: HAZELCAST_KUBERNETES_SERVICE_NAME
+          value: hazelcast-service
+        - name: HAZELCAST_KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: HAZELCAST_KUBERNETES_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hz-k8s-api-token
+              key: token
         - name: JAVA_OPTS
           value: "-Dhazelcast.config=/data/hazelcast/hazelcast.yaml -Dhazelcast.local.localAddress=$(MM_POD_NAME).hazelcast-service"
         - name: HZ_LICENSEKEY
@@ -94,3 +103,32 @@ subjects:
 - kind: ServiceAccount
   name: default
   namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hazelcast-cluster-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+      - pods
+      - nodes
+      - services
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hazelcast-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: hazelcast-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace:  ${NAMESPACE}
