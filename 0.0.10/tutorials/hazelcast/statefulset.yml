@@ -40,6 +40,14 @@ spec:
       annotations: 
         memory-machine.memverge.com/inject-env: "yes"
     spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: hazelcast
+            role: hazelcast
       containers:
       - name: hazelcast-openshift
         image: registry.connect.redhat.com/hazelcast/hazelcast-enterprise-5-rhel8:5.1
@@ -55,7 +63,6 @@ spec:
         - name: HAZELCAST_KUBERNETES_NAMESPACE
           valueFrom:
             fieldRef:
-              apiVersion: v1
               fieldPath: metadata.namespace
         - name: HAZELCAST_KUBERNETES_API_TOKEN
           valueFrom:
